@@ -112,11 +112,27 @@ struct Identifier : public std::enable_shared_from_this<Identifier> {
     }
     
     std::string as_string();
+    
+    auto begin() const {
+        if (parent) {
+            return parent->syms.cbegin() + offset;
+        } else {
+            return syms.cbegin();
+        }
+    }
+    
+    auto end() const {
+        if (parent) {
+            return parent->syms.cend();
+        } else {
+            return syms.cend();
+        }
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Identifier& i) {
     bool first = true;
-    for (const SymbolPtr& s : i.syms) {
+    for (const auto& s : i) {
         if (!first) os << '.';
         os << s;
         first = false;

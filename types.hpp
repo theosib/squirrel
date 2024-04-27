@@ -31,9 +31,9 @@ struct Symbol;
 typedef std::shared_ptr<Symbol> SymbolPtr;
 typedef std::weak_ptr<Symbol> SymbolWeakPtr;
 
-#define CHECK_EXCEPTION(v) ({ const ValuePtr& val(v); if (val && val->type == Value::EXCEPTION) return val; val; })
+#define CHECK_EXCEPTION(v) ({ const ValuePtr& val(v); if (val && val->type == Value::EXCEPTION) { std::cout << "returning exception:" << val << std::endl; return val; }; val; })
 
-#define NULL_EXCEPTION(v, c) ({ const ValuePtr& val(v); if (!val) return ExceptionValue::make("Illegal null reference", (c)); val; })
+#define NULL_EXCEPTION(v, c) ({ const ValuePtr& val(v); if (!val) { std::cout << "Null ref\n"; return ExceptionValue::make("Illegal null reference", (c));}; val; })
 
 typedef ValuePtr (*built_in_f)(ValuePtr, ContextPtr);
 

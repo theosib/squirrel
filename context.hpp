@@ -20,11 +20,22 @@ struct Context : public std::enable_shared_from_this<Context> {
     
     ValuePtr set(IdentifierPtr s, ValuePtr t);
     ValuePtr get(IdentifierPtr s);
+    
+    ValuePtr set(SymbolPtr s, ValuePtr t) { 
+        std::cout << "Set in context " << name << std::endl;
+        vars.set(s, t); return 0;
+    }
+    // XXX wrap exception
+    ValuePtr get(SymbolPtr s) { 
+        std::cout << "Get in context " << name << std::endl;
+        return vars.get(s); 
+    }
         
     static ContextPtr make() { return std::make_shared<Context>(); }
     static ContextPtr make_global() { 
         ContextPtr c = make();
         c->type = Symbol::global_symbol;
+        c->name = Symbol::global_symbol;
         return c;
     }
     
@@ -33,12 +44,21 @@ struct Context : public std::enable_shared_from_this<Context> {
         c->parent = shared_from_this();
         c->type = type;
         c->name = name;
+        //if (name) set(name, ContextValue::make(c));
         return c;
     }
     
-    ContextPtr make_function_context(SymbolPtr name) { return make_child_context(Symbol::func_symbol, name); }
-    ContextPtr make_class_context(SymbolPtr name) { return make_child_context(Symbol::class_symbol, name); }
-    ContextPtr make_object_context(SymbolPtr name) { return make_child_context(Symbol::object_symbol, name); }
+    ContextPtr make_function_context(SymbolPtr name) { 
+        return make_child_context(Symbol::func_symbol, name);
+    }
+    ContextPtr make_class_context(SymbolPtr name) { 
+        ContextPtr c = make_child_context(Symbol::class_symbol, name); 
+        set(name, ClassValue::make(c));
+        return c;
+    }
+    ContextPtr make_object_context(SymbolPtr name) { 
+        return make_child_context(Symbol::object_symbol, name); 
+    }
     
     ValuePtr wrap_exception(ValuePtr e) {
         if (e->type == Value::EXCEPTION) {

@@ -43,7 +43,7 @@ struct Value : public enable_shared_from_base<Value>  {
         return type == CLASS || type == OBJECT || type == CONTEXT;
     }
     
-    virtual ContextPtr get_context();
+    virtual ContextPtr get_context() const;
     
     static ValuePtr EMPTY_STR, ZERO_INT, ONE_INT, ZERO_FLOAT, ONE_FLOAT, TRUE, FALSE;
 };
@@ -211,11 +211,16 @@ struct ContextValue : public Value {
         p->context = c;
         return p;
     }
-    virtual ContextPtr get_context();
+    virtual ContextPtr get_context() const;
 };
 
 struct ClassValue : public ContextValue {
     DEF_MAKE(ClassValue, CLASS);
+    static ClassValuePtr make(ContextPtr c) {
+        ClassValuePtr p = make();
+        p->context = c;
+        return p;
+    }
 };
 
 struct ObjectValue : public ContextValue {

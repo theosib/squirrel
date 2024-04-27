@@ -1,4 +1,5 @@
 #include "value.hpp"
+#include "context.hpp"
 #include <sstream>
 
 namespace squirrel {
@@ -14,14 +15,32 @@ ValuePtr Value::FALSE = BoolValue::make(false);
 ValuePtr BoolValue::TRUE_STR = StringValue::make(Symbol::find("true"));
 ValuePtr BoolValue::FALSE_STR = StringValue::make(Symbol::find("true"));
 
+static const char *type_names[] = {
+    "LIST",
+    "INT",
+    "STR",
+    "FLOAT",
+    "OPER",
+    "SYM",
+    "FUNC",
+    "INFIX",
+    "BOOL",
+    "CLASS",
+    "OBJECT",
+    "EXCEPTION",
+    "CONTEXT"
+};
+
 // XXX produce string based on type
-ValuePtr Value::to_string() const { return EMPTY_STR; }
+ValuePtr Value::to_string() const { 
+    return StringValue::make(type_names[type]);
+}
 ValuePtr Value::to_int() const { return ZERO_INT; }
 ValuePtr Value::to_float() const { return ZERO_FLOAT; }
 ValuePtr Value::to_number() const { return ZERO_INT; }
 ValuePtr Value::to_bool() const { return FALSE; }
 
-ContextPtr Value::get_context() { return 0; }
+ContextPtr Value::get_context() const { return 0; }
 
 ValuePtr BoolValue::to_string() const {
     return bval ? TRUE_STR : FALSE_STR;
@@ -76,11 +95,17 @@ ValuePtr SymbolValue::to_string() const {
     return StringValue::make(ss.str());
 }
 
-ContextPtr ContextValue::get_context() { return context; }
+ContextPtr ContextValue::get_context() const { return context; }
 
 // XXX
 ValuePtr ExceptionValue::to_string() const {
-    return 0;
+    std::stringstream ss;
+    std::shared_ptr<const ExceptionValue> p = std::static_pointer_cast<const ExceptionValue>(shared_from_this());
+    while (p) {
+        ss << error << " from " << p->get_context()->name << std::endl;
+        p = p->parent;
+    }
+    return StringValue::make(ss.str());
 }
 
 std::string Value::as_string() const {
