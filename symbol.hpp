@@ -48,7 +48,11 @@ inline std::ostream& operator<<(std::ostream& os, const Symbol& s) {
 }
 
 inline std::ostream& operator<<(std::ostream& os, const SymbolPtr& s) {
-    os << (s ? s->str : "[no symbol]");
+    if (!s) {
+        os << "[no symbol]";
+    } else {
+        os << *s;
+    }
     return os;
 }
 
@@ -59,7 +63,7 @@ struct Identifier : public std::enable_shared_from_this<Identifier> {
     int offset = 0;
     
     void append(SymbolPtr s) { 
-        std::cout << "Appending " << s << std::endl;
+        //std::cout << "Appending " << s << std::endl;
         if (parent) {
             parent->syms.push_back(s);
         } else {

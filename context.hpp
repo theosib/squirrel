@@ -9,6 +9,7 @@
 namespace squirrel {
 
 struct Context : public std::enable_shared_from_this<Context> {
+    Interpreter *interp;
     ContextPtr parent;
     Dictionary vars;
     SymbolPtr name;
@@ -22,25 +23,41 @@ struct Context : public std::enable_shared_from_this<Context> {
     ValuePtr get(IdentifierPtr s);
     
     ValuePtr set(SymbolPtr s, ValuePtr t) { 
-        std::cout << "Set in context " << name << std::endl;
+        std::cout << "Set in context " << get_name() << std::endl;
         vars.set(s, t); return 0;
     }
     // XXX wrap exception
     ValuePtr get(SymbolPtr s) { 
-        std::cout << "Get in context " << name << std::endl;
+        std::cout << "Get in context " << get_name() << std::endl;
         return vars.get(s); 
     }
+    
+    ValuePtr get(ValuePtr s) {
+        NULL_EXCEPTION(s, shared_from_this());
+        if (s->type != Value::SYM) return ExceptionValue::make(std::string("Not a valid symbol (get): ") + s->as_string(), shared_from_this());
+        return get(std::static_pointer_cast<SymbolValue>(s)->sym);
+    }
+    
+    ValuePtr set(ValuePtr s, ValuePtr t) {
+        NULL_EXCEPTION(s, shared_from_this());
+        if (s->type != Value::SYM) return ExceptionValue::make(std::string("Not a valid symbol (set): ") + s->as_string(), shared_from_this());
+        return set(std::static_pointer_cast<SymbolValue>(s)->sym, t);
+    }
         
-    static ContextPtr make() { return std::make_shared<Context>(); }
-    static ContextPtr make_global() { 
-        ContextPtr c = make();
+    static ContextPtr make(Interpreter *i) { 
+        ContextPtr c = std::make_shared<Context>(); 
+        c->interp = i;
+        return c;
+    }
+    static ContextPtr make_global(Interpreter *i) { 
+        ContextPtr c = make(i);
         c->type = Symbol::global_symbol;
         c->name = Symbol::global_symbol;
         return c;
     }
     
     ContextPtr make_child_context(SymbolPtr type, SymbolPtr name) {
-        ContextPtr c = make();
+        ContextPtr c = make(interp);
         c->parent = shared_from_this();
         c->type = type;
         c->name = name;
@@ -70,6 +87,11 @@ struct Context : public std::enable_shared_from_this<Context> {
         } else {
             return e;
         }
+    }
+    
+    SymbolPtr get_name() {
+        if (!name) return type;
+        return name;
     }
 };
 

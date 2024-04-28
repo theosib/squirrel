@@ -5,6 +5,7 @@
 #include "enable_shared_from_base.hpp"
 #include <symbol.hpp>
 #include <string_view>
+#include <algorithm>
 
 namespace squirrel {
 
@@ -38,11 +39,13 @@ struct Value : public enable_shared_from_base<Value>  {
     virtual ValuePtr to_bool() const;
     
     std::string as_string() const;
+    virtual std::string as_print_string() const;
     
     bool has_context() {
-        return type == CLASS || type == OBJECT || type == CONTEXT;
+        return type == CLASS || type == OBJECT || type == CONTEXT || type == EXCEPTION;
     }
     
+    virtual SymbolPtr get_name() const;
     virtual ContextPtr get_context() const;
     
     static ValuePtr EMPTY_STR, ZERO_INT, ONE_INT, ZERO_FLOAT, ONE_FLOAT, TRUE, FALSE;
@@ -130,10 +133,12 @@ struct StringValue : public Value {
     static StringValuePtr make(const std::string_view& s) {
         return make(Symbol::find(s));
     }
+    
+    std::string as_print_string() const;
 };
 
 struct SymbolValue : public Value {
-    IdentifierPtr sym;
+    IdentifierPtr sym = Identifier::make();
     virtual ValuePtr to_string() const;
     DEF_MAKE(SymbolValue, SYM);
     static SymbolValuePtr make(SymbolPtr v) {
@@ -141,66 +146,9 @@ struct SymbolValue : public Value {
         p->sym->append(v);
         return p;
     }
-};
-
-struct ListValue : public Value {
-    std::vector<ValuePtr> list;
-    
-    ListValuePtr parent;
-    int start, len;
-    
-    DEF_MAKE(ListValue, LIST);
-    
-    void append(ValuePtr v) { list.push_back(v); }
-    
-    // XXX return exception
-    ListValuePtr sub(int s, int l) {
-        ListValuePtr p = make();
-        if (parent) {
-            p->parent = parent;
-            p->start = start + s;
-            if (l < 0) {
-                p->len = len - p->start;
-            } else {
-                p->len = len;
-            }
-        } else {
-            p->parent = shared_from_base<ListValue>();
-            p->start = s;
-        }
-        p->len = l;
-        if (l < 0) {
-            p->len = len - start;
-        } else {
-            p->len = len;
-        }
-        return p;
+    void append(SymbolPtr s) {
+        sym->append(s);
     }
-    
-    // XXX return exception
-    ValuePtr get(int index) {
-        if (parent) {
-            return parent->get(index + start);
-        } else {
-            return list[index];
-        }
-    }
-    
-    // XXX Return exception
-    ValuePtr put(int index, ValuePtr v) {
-        if (parent) {
-            parent->put(index + start, v);
-        } else {
-            list[index] = v;
-        }
-        return 0;
-    }
-};
-
-struct InfixValue : public Value {
-    std::vector<ValuePtr> list;
-    DEF_MAKE(InfixValue, INFIX);
-    void append(ValuePtr v) { list.push_back(v); }
 };
 
 struct ContextValue : public Value {
@@ -215,12 +163,14 @@ struct ContextValue : public Value {
 };
 
 struct ClassValue : public ContextValue {
+    SymbolPtr name;
     DEF_MAKE(ClassValue, CLASS);
     static ClassValuePtr make(ContextPtr c) {
         ClassValuePtr p = make();
         p->context = c;
         return p;
     }
+    virtual SymbolPtr get_name() const;
 };
 
 struct ObjectValue : public ContextValue {
@@ -228,10 +178,9 @@ struct ObjectValue : public ContextValue {
     DEF_MAKE(ObjectValue, OBJECT);
 };
 
-struct ExceptionValue : public Value {
+struct ExceptionValue : public ContextValue {
     std::string error;
     ExceptionValuePtr parent;
-    ContextPtr context;
     virtual ValuePtr to_string() const;
     DEF_MAKE(ExceptionValue, EXCEPTION);
     static ExceptionValuePtr make(const std::string& err, ContextPtr c) {
@@ -244,13 +193,98 @@ struct ExceptionValue : public Value {
 };
 
 struct FunctionValue : public Value {
+    SymbolPtr name;
     ListValuePtr params, body;
     DEF_MAKE(FunctionValue, FUNC);
+    virtual SymbolPtr get_name() const;
 };
 
 struct OperatorValue : public Value {
+    SymbolPtr name;
     built_in_f oper;
+    uint8_t precedence;
+    uint8_t order;    
     DEF_MAKE(OperatorValue, OPER);
+    static OperatorValuePtr make(SymbolPtr name, built_in_f f, uint8_t p, uint8_t o) {
+        OperatorValuePtr v = make();
+        v->name = name;
+        v->oper = f;
+        v->precedence = p;
+        v->order = o;
+        return v;
+    }
+    virtual SymbolPtr get_name() const;
+};
+
+struct ListValue : public Value {
+    std::vector<ValuePtr> list;
+    
+    ListValuePtr parent;
+    int start, len;
+    
+    DEF_MAKE(ListValue, LIST);
+    
+    void append(ValuePtr v) { list.push_back(v); }
+    
+    // XXX return exception
+    // Check bounds
+    ListValuePtr sub(int s, int l = -1) {
+        ListValuePtr p = make();
+        if (parent) {
+            p->parent = parent;
+            p->start = start + s;
+            if (l < 0) {
+                p->len = len - p->start;
+            } else {
+                p->len = std::min(l, len - p->start);
+            }
+        } else {
+            p->parent = shared_from_base<ListValue>();
+            p->start = s;
+            if (l < 0) {
+                p->len = list.size() - s;
+            } else {
+                p->len = std::min(l, (int)list.size() - s);
+            }
+        }
+        return p;
+    }
+    
+    // XXX return exception
+    ValuePtr get(int index) const {
+        if (parent) {
+            if (index < 0 || index >= len) return ExceptionValue::make("Index out of bounds", 0);
+            return parent->get(index + start);
+        } else {
+            if (index < 0 || index >= list.size()) return ExceptionValue::make("Index out of bounds", 0);
+            return list[index];
+        }
+    }
+    
+    // XXX Return exception
+    ValuePtr put(int index, ValuePtr v) {
+        if (parent) {
+            if (index < 0 || index >= len) return ExceptionValue::make("Index out of bounds", 0);
+            parent->put(index + start, v);
+        } else {
+            if (index < 0 || index >= list.size()) return ExceptionValue::make("Index out of bounds", 0);
+            list[index] = v;
+        }
+        return 0;
+    }
+    
+    int size() const {
+        return parent ? len : list.size();
+    }
+    
+    virtual ValuePtr to_string() const;
+    
+    std::ostream& print(std::ostream& os) const;
+};
+
+struct InfixValue : public ListValue {
+    DEF_MAKE(InfixValue, INFIX);
+    virtual ValuePtr to_string() const;
 };
 
 }; // namespace squirrel

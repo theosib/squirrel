@@ -15,7 +15,7 @@ ValuePtr Context::set(IdentifierPtr s, ValuePtr t) {
 }
 
 ValuePtr Context::get(IdentifierPtr s) {
-    std::cout << "Get in context " << name << std::endl;
+    std::cout << "Get in context " << get_name() << std::endl;
     ValuePtr cv = NULL_EXCEPTION(CHECK_EXCEPTION(find_owner(s, false)), shared_from_this());
     ContextPtr c = cv->get_context();
     if (!c) return ExceptionValue::make("Illegal null context", shared_from_this());
@@ -51,14 +51,14 @@ ValuePtr Context::find_owner_local(IdentifierPtr s, bool for_writing)
         if (!s->has_next()) return ContextValue::make(shared_from_this());
         // Otherwise make sure the current name is a context
         ValuePtr v = vars.get(first);
-        if (v->has_context()) return v->get_context()->find_owner_local(s->next());
+        if (v->has_context()) return v->get_context()->find_owner_local(s->next(), for_writing);
         return ExceptionValue::make(std::string("Not a context: ") + s->as_string(), shared_from_this());
     }
 }
 
 ValuePtr Context::find_owner(IdentifierPtr s, bool for_writing)
 {
-    std::cout << "Looking for " << s << " in " << name << " writing=" << for_writing << std::endl;
+    std::cout << "Looking for " << s << " in " << get_name() << " writing=" << for_writing << std::endl;
     if (!s->has_first()) ExceptionValue::make(std::string("Invalid identifier: ") + s->original()->as_string(), shared_from_this());
     
     SymbolPtr first = s->first();
