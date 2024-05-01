@@ -1,7 +1,17 @@
 #include "symbol.hpp"
 #include <sstream>
+#include "value.hpp"
 
 namespace squirrel {
+
+std::ostream& operator<<(std::ostream& os, const Index& ix) {
+    os << ix.sym;
+    if (ix.has_index()) {
+        //std::cout << "Printing index of type " << ix.index->type << "\n";
+        os << '[' << ix.index << ']';
+    }
+    return os;
+}
 
 std::vector<SymbolWeakPtr> Symbol::interns;
 
@@ -15,23 +25,23 @@ SymbolPtr Symbol::func_symbol = Symbol::find("func");
 
 SymbolPtr Symbol::find(const std::string_view& str)
 {
-    int free_index = -1;
+    int free_code = -1;
     for (int i=0; i<interns.size(); i++) {
         SymbolPtr s = interns[i].lock();
         if (!s) {
-            free_index = i;
+            free_code = i;
         } else {
             if (str == s->str) return s;
         }
     }
-    if (free_index < 0) {
-        free_index = interns.size();
-        interns.resize(free_index+1);
+    if (free_code < 0) {
+        free_code = interns.size();
+        interns.resize(free_code+1);
     }
     SymbolPtr s = Symbol::make();
     s->str = str;
-    s->index = free_index;
-    interns[free_index] = s;
+    s->code = free_code;
+    interns[free_code] = s;
     return s;  
 }
 

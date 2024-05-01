@@ -10,15 +10,15 @@ struct Dictionary {
     
     void set(SymbolPtr s, ValuePtr t) {
         std::cout << "Setting " << s << " to " << t << std::endl;
-        entries[s->index] = {s, t};
+        entries[s->code] = {s, t};
     }
     
     void unset(SymbolPtr s) {
-        entries.erase(s->index);
+        entries.erase(s->code);
     }
     
     ValuePtr get(SymbolPtr s) {
-        auto i = entries.find(s->index);
+        auto i = entries.find(s->code);
         if (i == entries.end()) {
             std::cout << "Variable " << s << " not found\n";
             return ExceptionValue::make(std::string("No such symbol ") + s->as_string(), 0);
@@ -29,7 +29,7 @@ struct Dictionary {
     }
     
     bool has_key(SymbolPtr s) {
-        return entries.find(s->index) != entries.end();
+        return entries.find(s->code) != entries.end();
     }
 };
 

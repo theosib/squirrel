@@ -16,32 +16,33 @@ struct Context : public std::enable_shared_from_this<Context> {
     SymbolPtr type;
         
     ValuePtr find_ancestor_type(SymbolPtr sym);
-    ValuePtr find_owner(IdentifierPtr s, bool for_writing = false);
-    ValuePtr find_owner_local(IdentifierPtr s, bool for_writing = false);
+    ValuePtr find_owner(IdentifierPtr s, ContextPtr caller, bool for_writing = false);
+    ValuePtr find_owner_local(IdentifierPtr s, ContextPtr caller, bool for_writing = false);
     
-    ValuePtr set(IdentifierPtr s, ValuePtr t);
-    ValuePtr get(IdentifierPtr s);
+    ValuePtr set(IdentifierPtr s, ValuePtr t, ContextPtr caller);
+    ValuePtr get(IdentifierPtr s, ContextPtr caller);
     
-    ValuePtr set(SymbolPtr s, ValuePtr t) { 
-        std::cout << "Set in context " << get_name() << std::endl;
-        vars.set(s, t); return 0;
-    }
+    ValuePtr set(IndexPtr s, ValuePtr t, ContextPtr caller);
+    ValuePtr get(IndexPtr s, ContextPtr caller);
+    
     // XXX wrap exception
     ValuePtr get(SymbolPtr s) { 
         std::cout << "Get in context " << get_name() << std::endl;
         return vars.get(s); 
     }
     
-    ValuePtr get(ValuePtr s) {
-        NULL_EXCEPTION(s, shared_from_this());
-        if (s->type != Value::SYM) return ExceptionValue::make(std::string("Not a valid symbol (get): ") + s->as_string(), shared_from_this());
-        return get(std::static_pointer_cast<SymbolValue>(s)->sym);
+    ValuePtr set(SymbolPtr s, ValuePtr t) { 
+        std::cout << "Set in context " << get_name() << std::endl;
+        vars.set(s, t); 
+        return NoneValue::make();
     }
     
-    ValuePtr set(ValuePtr s, ValuePtr t) {
-        NULL_EXCEPTION(s, shared_from_this());
-        if (s->type != Value::SYM) return ExceptionValue::make(std::string("Not a valid symbol (set): ") + s->as_string(), shared_from_this());
-        return set(std::static_pointer_cast<SymbolValue>(s)->sym, t);
+    ValuePtr get(ValuePtr s, ContextPtr caller) {
+        return get(CAST_SYMBOL(s, shared_from_this())->sym, caller);
+    }
+    
+    ValuePtr set(ValuePtr s, ValuePtr t, ContextPtr caller) {
+        return set(CAST_SYMBOL(s, shared_from_this())->sym, t, caller);
     }
         
     static ContextPtr make(Interpreter *i) { 
@@ -79,10 +80,14 @@ struct Context : public std::enable_shared_from_this<Context> {
     
     ValuePtr wrap_exception(ValuePtr e) {
         if (e->type == Value::EXCEPTION) {
+            ExceptionValuePtr ev = CAST_EXCEPTION(e, 0);
+            auto self = shared_from_this();
+            if (ev->context == self) return e;
+            
             ExceptionValuePtr new_ev = ExceptionValue::make();
-            ExceptionValuePtr ev = std::static_pointer_cast<ExceptionValue>(e);
-            ev->parent = new_ev;
-            new_ev->context = shared_from_this();
+            std::cout << "Wrapping exception: " << ValuePtr(ev) << std::endl;
+            new_ev->context = self;
+            new_ev->parent = ev;
             return new_ev;
         } else {
             return e;

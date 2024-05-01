@@ -10,6 +10,7 @@ namespace squirrel {
     typedef std::shared_ptr<x> x##Ptr;
 
 DEF_SHARED_PTR(Value);
+DEF_SHARED_PTR(NoneValue);
 DEF_SHARED_PTR(BoolValue);
 DEF_SHARED_PTR(IntValue);
 DEF_SHARED_PTR(FloatValue);
@@ -26,6 +27,7 @@ DEF_SHARED_PTR(ContextValue);
 DEF_SHARED_PTR(Context);
 DEF_SHARED_PTR(Dictionary);
 DEF_SHARED_PTR(Identifier);
+DEF_SHARED_PTR(Index);
 
 struct Symbol;
 typedef std::shared_ptr<Symbol> SymbolPtr;
@@ -33,13 +35,13 @@ typedef std::weak_ptr<Symbol> SymbolWeakPtr;
 
 struct Interpreter;
 
-#define CHECK_EXCEPTION(v) ({ const ValuePtr& val(v); if (val && val->type == Value::EXCEPTION) return val; val; })
+#define CHECK_EXCEPTION(v) ({ const ValuePtr& __val(v); if (__val && __val->type == Value::EXCEPTION) return __val; __val; })
 
-#define CHECK_EXCEPTION_WRAP(v, c) ({ const ValuePtr& val(v); if (val && val->type == Value::EXCEPTION) return c->wrap_exception(val); val; })
+#define CHECK_EXCEPTION_WRAP(v, c) ({ const ValuePtr& __val(v); if (__val && __val->type == Value::EXCEPTION) return c->wrap_exception(__val); __val; })
 
-#define NULL_EXCEPTION(v, c) ({ const ValuePtr& val(v); if (!val) return ExceptionValue::make("Illegal null reference", (c)); val; })
+#define NULL_EXCEPTION(v, c) ({ const ValuePtr& __val(v); if (!__val) return ExceptionValue::make("Illegal null reference", (c)); __val; })
 
-typedef ValuePtr (*built_in_f)(ValuePtr, ContextPtr);
+typedef ValuePtr (*built_in_f)(ListValuePtr, ContextPtr);
 
 } // namespace squirrel
 

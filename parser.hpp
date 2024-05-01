@@ -59,7 +59,7 @@ struct Parser {
     static int parse_string(const char *src, int len_in, char *dst);
     static float parse_float(const char *str, int length);
     static ValuePtr parse_number(Parsing& p);
-    static SymbolValuePtr parse_symbol(const char *str, int len);
+    static SymbolValuePtr parse_symbol(Parsing& p);
     static ValuePtr parse_token(Parsing& p);
     static ValuePtr parse(Parsing& p, ValuePtr list = 0);
     static ValuePtr parse(const std::string_view& s) {

@@ -15,6 +15,7 @@ int Parser::parse_octal(const char *src, int len)
 
 int Parser::parse_decimal(const char *src, int len)
 {
+    std::cout << "Parse decimal: " << std::string_view(src, len) << std::endl;
     int val = 0;
     bool neg = false;
     if (len && (*src == '-' || *src == '+')) {
@@ -245,19 +246,63 @@ ValuePtr Parser::parse_number(Parsing& p)
         break;
     }
     
+    std::cout << "parse number fail\n";
     return 0;
 }
 
-SymbolValuePtr Parser::parse_symbol(const char *str, int len)
+SymbolValuePtr Parser::parse_symbol(Parsing& p)
 {
-    char ch;
-    Parsing p(str, len);
+    char c;
     SymbolValuePtr s = SymbolValue::make();
     while (p.more()) {
         p.set_mark();
-        while (p.more() && p.peek() != '.') p.skip();
-        s->append(Symbol::make(std::string_view(p.get_mark(), p.mark_len())));
-        p.skip();
+        bool delimiter = false;
+        bool dot = false;
+        bool left_bracket = false;
+        while ((c = p.peek())) {
+            if (isspace(c) || c == ')' || c == '}' || c == '(' || c == '{' || c == ']') {
+                delimiter = true;
+                break;
+            } else if (c == '.') {
+                dot = true;
+                break;
+            } else if (c == '[') {
+                left_bracket = true;
+                break;
+            } else {
+                p.skip();
+            }
+        }
+        if (!c) delimiter = true;
+        
+        if (p.mark_len() < 1) {
+            std::cout << "No more\n";
+            return s;
+        }
+        if (delimiter) {
+            std::cout << "Delimiter: " << std::string_view(p.get_mark(), p.mark_len()) << std::endl;
+            s->append(Index::make(std::string_view(p.get_mark(), p.mark_len())));
+            return s;
+        }
+        if (dot) {
+            std::cout << "Dot: " << std::string_view(p.get_mark(), p.mark_len()) << std::endl;
+            s->append(Index::make(std::string_view(p.get_mark(), p.mark_len())));
+            p.skip();
+        } else if (left_bracket) {
+            std::cout << "LB: " << std::string_view(p.get_mark(), p.mark_len()) << std::endl;
+            SymbolPtr sym = Symbol::make(std::string_view(p.get_mark(), p.mark_len()));
+            p.skip();
+            ValuePtr index = parse_token(p);
+            std::cout << "RB: " << index << std::endl;
+            s->append(Index::make(sym, index));
+            if (p.peek() == ']') {
+                p.pop();
+            } else {
+                std::cout << "index didn't end with ]\n";
+            }
+        } else {
+            std::cout << "Identifier parser bug?\n";
+        }
     }
     return s;
 }
@@ -275,9 +320,12 @@ ValuePtr Parser::parse_token(Parsing& p)
     char first = p.peek();
     switch (first) {
     case 0:
+        std::cout << "Exiting on null\n";
         return 0;
     case ')':
     case '}':
+    case ']':
+        std::cout << "Exiting on " << first << "\n";
         p.pop();
         return 0;
     case '\'':
@@ -337,41 +385,22 @@ ValuePtr Parser::parse_token(Parsing& p)
             t->quote = quote;
             return t;
         }
-        
-        while ((c = p.peek())) {
-            if (isspace(c) || c == ')' || c == '}' || c == '(' || c == '{') {
-                break;
-            } else {
-                p.skip();
-            }
-        }
-        
-        t = parse_symbol(p.get_mark(), p.mark_len());
-        t->quote = quote;
-        return t;
     }
-    
-    p.set_mark();
-    while ((c = p.peek())) {
-        if (isspace(c) || c == ')' || c == '}' || c == '(' || c == '{') {
-            break;
-        } else {
-            p.skip();
-        }
-    }
-    
-    t = parse_symbol(p.get_mark(), p.mark_len());
+        
+    t = parse_symbol(p);
     t->quote = quote;
     return t;
 }
 
-
 ValuePtr Parser::parse(Parsing& p, ValuePtr list)
 {
-    ListValuePtr l = list ? std::static_pointer_cast<ListValue>(list) : ListValue::make();
+    ListValuePtr l = list ? CAST_LIST(list, 0) : ListValue::make();
     for (;;) {
         ValuePtr n = parse_token(p);
-        if (!n) break;
+        if (!n) {
+            std::cout << "Stopping with " << p.len << " remaining\n";
+            break;
+        }
         l->append(n);
     }    
     return l;

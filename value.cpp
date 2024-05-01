@@ -1,6 +1,7 @@
 #include "value.hpp"
 #include "context.hpp"
 #include <sstream>
+#include "parser.hpp"
 
 namespace squirrel {
 
@@ -16,6 +17,7 @@ ValuePtr BoolValue::TRUE_STR = StringValue::make(Symbol::find("true"));
 ValuePtr BoolValue::FALSE_STR = StringValue::make(Symbol::find("true"));
 
 static const char *type_names[] = {
+    "NONE",
     "LIST",
     "INT",
     "STR",
@@ -33,6 +35,7 @@ static const char *type_names[] = {
 
 // XXX produce string based on type
 ValuePtr Value::to_string() const {
+    // std::cout << "General to_string\n";
     std::string n(type_names[type]);
     SymbolPtr name = get_name();
     if (name) {
@@ -50,8 +53,14 @@ ValuePtr Value::to_bool() const { return FALSE; }
 ContextPtr Value::get_context() const { return 0; }
 SymbolPtr Value::get_name() const {
     ContextPtr c = get_context();
-    if (!c) return 0;
+    if (!c) return Symbol::empty_symbol;
     return c->get_name();
+}
+
+NoneValuePtr NoneValue::none_value = std::make_shared<NoneValue>();
+
+ValuePtr NoneValue::to_string() const {
+    return Value::EMPTY_STR;
 }
 
 ValuePtr BoolValue::to_string() const {
@@ -71,6 +80,7 @@ ValuePtr BoolValue::to_bool() const { return bval ? TRUE : FALSE; }
 
 
 ValuePtr IntValue::to_string() const {
+    // std::cout << "int to_string\n";
     std::stringstream ss;
     ss << ival;
     return StringValue::make(ss.str());
@@ -93,13 +103,20 @@ ValuePtr FloatValue::to_int() const { return IntValue::make((int)fval); }
 ValuePtr FloatValue::to_number() const { return to_float(); }
 ValuePtr FloatValue::to_bool() const { return fval ? TRUE : FALSE; }
 
-
-// XXX use parser
 ValuePtr StringValue::to_string() const { return std::const_pointer_cast<Value>(shared_from_this()); }
-ValuePtr StringValue::to_int() const { return 0; }
-ValuePtr StringValue::to_float() const { return 0; }
-ValuePtr StringValue::to_number() const { return 0; }
-ValuePtr StringValue::to_bool() const { return 0; }
+ValuePtr StringValue::to_int() const { return to_number()->to_int(); }
+ValuePtr StringValue::to_float() const { return to_number()->to_float(); }
+ValuePtr StringValue::to_number() const {
+    Parsing p(sym->str.data(), sym->str.size());
+    ValuePtr t = Parser::parse_number(p);
+    if (!t) return ZERO_INT;
+    return t; 
+}
+ValuePtr StringValue::to_bool() const {
+    if (sym->str.size() == 0) return FALSE;
+    if (sym->str.size() == 1 && sym->str[0] == '0') return FALSE;
+    return TRUE; 
+}
 
 ValuePtr SymbolValue::to_string() const { 
     std::stringstream ss;
@@ -146,17 +163,33 @@ ValuePtr ExceptionValue::to_string() const {
     std::shared_ptr<const ExceptionValue> p = std::static_pointer_cast<const ExceptionValue>(shared_from_this());
     bool first = true;
     while (p) {
-        // std::cout << error << " from " << p->get_context()->name << std::endl;
+        //std::cout << err << " from " << p->get_context()->name << std::endl;
         if (!first) ss << std::endl;
-        ss << error << " from " << p->get_context()->name;
+        ContextPtr c = p->get_context();
+        if (c) {
+            if (p->err.size() > 0) {
+                ss << "Exception from " << c->name << ": " << p->err;
+            } else {
+                ss << "Exception from " << c->name;
+            }
+        } else {
+            ss << p->err;
+        }
         p = p->parent;
         first = false;
     }
     return StringValue::make(ss.str());
 }
 
+int Value::as_int() const {
+    IntValuePtr s = std::static_pointer_cast<IntValue>(to_int());
+    return s->ival;
+}
+
 std::string Value::as_string() const {
+    // std::cout << "As string: " << type_names[type] << std::endl;
     StringValuePtr s = std::static_pointer_cast<StringValue>(to_string());
+    // std::cout << "Now calling as_string()\n";
     return s->sym->as_string();
 }
 

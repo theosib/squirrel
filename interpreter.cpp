@@ -10,9 +10,10 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
     if (!v->quote) {
         if (v->type == Value::LIST) {
             std::cout << "Unquoted list\n";
-            ListValuePtr l = std::static_pointer_cast<ListValue>(v);
+            ListValuePtr l = CAST_LIST(v, 0);
             ValuePtr name = CHECK_EXCEPTION_WRAP(l->get(0), c);
             std::cout << "Name: " << name << std::endl;
+            if (name->type == Value::LIST) return evaluate_body(l, c);
             // XXX throw exception for invalid function call. If it's a list, just return that.
             if (name->type != Value::SYM) return v; 
             ListValuePtr args = l->sub(1);
@@ -20,8 +21,8 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
             return CHECK_EXCEPTION_WRAP(call_function(name, args, c), c);
         }
         if (v->type == Value::SYM) {
-            SymbolValuePtr s = std::static_pointer_cast<SymbolValue>(v);
-            return c->get(s);
+            SymbolValuePtr s = CAST_SYMBOL(v, 0);
+            return c->get(s, c);
         }
     }
     return v;
@@ -30,7 +31,7 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
 ValuePtr Interpreter::call_function(ValuePtr name, ListValuePtr args, ContextPtr caller)
 {
     // Look up name to get function/operator
-    ValuePtr func = CHECK_EXCEPTION(caller->get(name));
+    ValuePtr func = CHECK_EXCEPTION(caller->get(name, caller));
     if (func->type != Value::FUNC && func->type != Value::OPER) 
         return ExceptionValue::make(std::string("Not a valid function or operator: ") + func->as_string(), caller);
     
@@ -41,7 +42,7 @@ ValuePtr Interpreter::call_function(ValuePtr name, ListValuePtr args, ContextPtr
         // For function, create local variable context
         ContextPtr c = caller->make_function_context(func->get_name());
         // Assign args
-        FunctionValuePtr fv = std::static_pointer_cast<FunctionValue>(func);
+        FunctionValuePtr fv = CAST_FUNC(func, 0);
         ListValuePtr params = fv->params;
         int n = std::min(args->size(), params->size());
         for (int i=0; i<n; i++) {
@@ -51,20 +52,22 @@ ValuePtr Interpreter::call_function(ValuePtr name, ListValuePtr args, ContextPtr
             }
             if (params->quote) {
                 // If last param name is quoted, put rest of args into list
-                c->set(param, args->sub(i));
+                c->set(param, evaluate_list(args->sub(i), caller), caller);
                 break;
             } else {
-                c->set(param, args->get(i));
+                c->set(param, evaluate(args->get(i), caller), caller);
             }
         }
         // XXX deal with args/params mismatch
         // Execute body of function 
-        return evaluate_list(fv->body, c);
+        return evaluate_body(fv->body, c);
     } else {
         std::cout << "Operator\n";
-        OperatorValuePtr ov = std::static_pointer_cast<OperatorValue>(func);
+        OperatorValuePtr ov = CAST_OPER(func, 0);
         // Call operator
-        return ov->oper(args, caller);
+        ValuePtr vp = ov->oper(args, caller);
+        // std::cout << "operator returns: " << vp << std::endl;
+        return vp;
     }
 }
 
@@ -72,6 +75,7 @@ ListValuePtr Interpreter::evaluate_list(ListValuePtr in, ContextPtr c)
 {
     if (!c) c = global;
 
+    std::cout << "Evaluating list: " << ValuePtr(in) << std::endl;
     if (in->quote) return in;
     ListValuePtr out = ListValue::make();
     for (int i=0; i<in->size(); i++) {
@@ -80,6 +84,26 @@ ListValuePtr Interpreter::evaluate_list(ListValuePtr in, ContextPtr c)
         out->append(v_out);
     }
     return out;
+}
+
+ValuePtr Interpreter::evaluate_body(ListValuePtr in, ContextPtr c)
+{
+    if (!c) c = global;
+
+    std::cout << "Evaluating body: " << ValuePtr(in) << std::endl;
+    ValuePtr out;
+    for (int i=0; i<in->size(); i++) {
+        ValuePtr v_in = in->get(i);
+        out = evaluate(v_in, c);
+    }
+    return out;
+}
+
+void Interpreter::add_operator(const std::string_view& name, built_in_f op, int precedence, int order, bool no_eval)
+{
+    SymbolPtr sym = Symbol::make(name);
+    OperatorValuePtr ov = squirrel::OperatorValue::make(sym, op, precedence, order, no_eval);
+    global->set(sym, ov);
 }
 
 }; // namespace squirrel

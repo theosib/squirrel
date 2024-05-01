@@ -14,18 +14,15 @@ namespace squirrel {
 
 struct Symbol {
     std::string str;
-    int index;
+    int code;
     
     Symbol() {}
     Symbol(const std::string_view& s_in, int ix) {
         str = s_in;
-        index = ix;
+        code = ix;
     }
     
-    static SymbolPtr make() {
-        return std::make_shared<Symbol>();
-    }
-    
+    static SymbolPtr make() { return std::make_shared<Symbol>(); }
     static SymbolPtr find(const std::string_view& str);
     static SymbolPtr make(const std::string_view& str) { return find(str); }
     
@@ -33,10 +30,10 @@ struct Symbol {
     static SymbolPtr empty_symbol, parent_symbol, global_symbol, class_symbol, object_symbol, local_symbol, func_symbol;
     
     bool operator==(const Symbol& other) {
-        return other.index == index;
+        return other.code == code;
     }
     bool operator!=(const Symbol& other) {
-        return other.index != index;
+        return other.code != code;
     }
     
     const std::string& as_string() { return str; }
@@ -56,13 +53,60 @@ inline std::ostream& operator<<(std::ostream& os, const SymbolPtr& s) {
     return os;
 }
 
+struct Index {
+    SymbolPtr sym;
+    ValuePtr index;
+    
+    static IndexPtr make() { return std::make_shared<Index>(); }
+    static IndexPtr make(const std::string_view& str) { 
+        IndexPtr ix = std::make_shared<Index>(); 
+        ix->sym = Symbol::make(str);
+        return ix;
+    }
+    static IndexPtr make(const std::string_view& str, ValuePtr index_in) { 
+        IndexPtr ix = std::make_shared<Index>(); 
+        ix->sym = Symbol::make(str);
+        ix->index = index_in;
+        return ix;
+    }
+    static IndexPtr make(SymbolPtr sym, ValuePtr index_in) { 
+        IndexPtr ix = std::make_shared<Index>(); 
+        ix->sym = sym;
+        ix->index = index_in;
+        return ix;
+    }
+    
+    bool has_index() const { return !!index; }
+    ValuePtr get_index() const { return index; }
+};
+
+std::ostream& operator<<(std::ostream& os, const Index& ix);
+
+// inline std::ostream& operator<<(std::ostream& os, const Index& ix) {
+//     os << ix.sym;
+//     if (ix.has_index()) {
+//         std::cout << "Printing index of type " << ix->index"\n";
+//         os << '[' << ix.index << ']';
+//     }
+//     return os;
+// }
+
+inline std::ostream& operator<<(std::ostream& os, const IndexPtr& s) {
+    if (!s) {
+        os << "[no symbol]";
+    } else {
+        os << *s;
+    }
+    return os;
+}
+
 struct Identifier : public std::enable_shared_from_this<Identifier> {
-    std::vector<SymbolPtr> syms;
+    std::vector<IndexPtr> syms;
 
     IdentifierPtr parent;
     int offset = 0;
     
-    void append(SymbolPtr s) { 
+    void append(IndexPtr s) { 
         //std::cout << "Appending " << s << std::endl;
         if (parent) {
             parent->syms.push_back(s);
@@ -71,7 +115,7 @@ struct Identifier : public std::enable_shared_from_this<Identifier> {
         }
     }
     
-    void append(const std::string_view& s) { append(Symbol::make(s)); }
+    void append(const std::string_view& s) { append(Index::make(s)); }
     
     static IdentifierPtr make() {
         return std::make_shared<Identifier>();
@@ -85,7 +129,7 @@ struct Identifier : public std::enable_shared_from_this<Identifier> {
     }
     
     IdentifierPtr next() {
-        if (!has_next()) return 0;
+        if (!has_next()) return 0; // XXX best not to return null
         
         IdentifierPtr n = make();
         if (parent) {
@@ -98,11 +142,11 @@ struct Identifier : public std::enable_shared_from_this<Identifier> {
         return n;
     }
     
-    SymbolPtr first() const {
+    IndexPtr first() const {
         return parent ? parent->syms[offset] : syms[offset];
     }
     
-    SymbolPtr last() const {
+    IndexPtr last() const {
         return parent ? parent->syms[parent->syms.size()-1] : syms[syms.size()-1];
     }
     

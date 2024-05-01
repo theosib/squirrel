@@ -28,16 +28,25 @@ int main()
     // l->append(squirrel::StringValue::make("Test\nstring\033"));
     // std::cout << squirrel::ValuePtr(l) << std::endl;
     
-    squirrel::OperatorValuePtr ov = squirrel::OperatorValue::make(squirrel::Symbol::make("test"), test_op, 0, 0);
-    interp.global->set(squirrel::Symbol::make("test"), ov);
+    // squirrel::OperatorValuePtr ov = squirrel::OperatorValue::make(squirrel::Symbol::make("test"), test_op, 0, 0, false);
+    // interp.global->set(squirrel::Symbol::make("test"), ov);
     
-    squirrel::ValuePtr line = squirrel::Parser::parse("test 2");
-    std::cout << interp.evaluate(line) << std::endl;
+    // interp.add_operator("test", test_op, 0, 0);
+    //
+    // squirrel::ValuePtr line = squirrel::Parser::parse("test 2");
+    // std::cout << interp.evaluate(line) << std::endl;
     
     // squirrel::FuncValuePtr fv = squirrel::FuncValue::make();
     // fv->name = Symbol::make("myfunc");
     // fv->
     // squirrel::ValuePtr v = squirrel::Parser::parse("{'{'\"some string\"} '5 '(3 + 4) 'quit '3.14 't}");
     // std::cout << v << std::endl;
+    
+    for (std::string line; std::getline(std::cin, line);) {
+        squirrel::ValuePtr v = interp.evaluate(line);
+        if (v->type != squirrel::Value::NONE) std::cout << v << std::endl;
+    }
+    
+    
     return 0;
 }
