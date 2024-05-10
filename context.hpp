@@ -16,11 +16,12 @@ struct Context : public std::enable_shared_from_this<Context> {
     SymbolPtr type;
         
     ValuePtr find_ancestor_type(SymbolPtr sym);
-    ValuePtr find_owner(IdentifierPtr s, ContextPtr caller, bool for_writing = false);
-    ValuePtr find_owner_local(IdentifierPtr s, ContextPtr caller, bool for_writing = false);
+    ValuePtr find_owner(IdentifierPtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context, bool for_writing = false);
+    ValuePtr find_owner_local(IdentifierPtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context, bool for_writing = false);
     
     ValuePtr set(IdentifierPtr s, ValuePtr t, ContextPtr caller);
     ValuePtr get(IdentifierPtr s, ContextPtr caller);
+    ValuePtr get(IdentifierPtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context);
     
     ValuePtr set(IndexPtr s, ValuePtr t, ContextPtr caller);
     ValuePtr get(IndexPtr s, ContextPtr caller);
@@ -37,13 +38,11 @@ struct Context : public std::enable_shared_from_this<Context> {
         return NoneValue::make();
     }
     
-    ValuePtr get(ValuePtr s, ContextPtr caller) {
-        return get(CAST_SYMBOL(s, shared_from_this())->sym, caller);
+    ValuePtr get(ValuePtr s, ContextPtr caller) { return get(CAST_SYMBOL(s, shared_from_this())->sym, caller); }
+    ValuePtr get(ValuePtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context) { 
+        return get(CAST_SYMBOL(s, shared_from_this())->sym, caller, exec_context, func_context); 
     }
-    
-    ValuePtr set(ValuePtr s, ValuePtr t, ContextPtr caller) {
-        return set(CAST_SYMBOL(s, shared_from_this())->sym, t, caller);
-    }
+    ValuePtr set(ValuePtr s, ValuePtr t, ContextPtr caller) { return set(CAST_SYMBOL(s, shared_from_this())->sym, t, caller); }
         
     static ContextPtr make(Interpreter *i) { 
         ContextPtr c = std::make_shared<Context>(); 

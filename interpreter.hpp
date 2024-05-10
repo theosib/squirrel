@@ -23,7 +23,7 @@ struct Interpreter {
     ValuePtr evaluate(ValuePtr v, ContextPtr c = 0);
     ListValuePtr evaluate_list(ListValuePtr in, ContextPtr c = 0);
     ValuePtr evaluate_body(ListValuePtr in, ContextPtr c = 0);
-    ValuePtr call_function(ValuePtr name, ListValuePtr args, ContextPtr caller);
+    ValuePtr call_function(SymbolValuePtr name, ListValuePtr args, ContextPtr caller);
     
     void add_operator(const std::string_view& name, built_in_f op, int precedence = 0, int order = 0, bool no_eval = false);
     

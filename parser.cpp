@@ -246,6 +246,7 @@ ValuePtr Parser::parse_number(Parsing& p)
         break;
     }
     
+    p.rewind();
     std::cout << "parse number fail\n";
     return 0;
 }

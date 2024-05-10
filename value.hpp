@@ -3,7 +3,7 @@
 
 #include "types.hpp"
 #include "enable_shared_from_base.hpp"
-#include <symbol.hpp>
+#include "symbol.hpp"
 #include <string_view>
 #include <algorithm>
 
@@ -40,9 +40,10 @@ struct Value : public enable_shared_from_base<Value>  {
     virtual ValuePtr to_bool() const;
     
     int as_int() const;
-    
+    float as_float() const;    
     std::string as_string() const;
     virtual std::string as_print_string() const;
+    bool as_bool() const;
     
     bool has_context() {
         return type == CLASS || type == OBJECT || type == CONTEXT || type == EXCEPTION;
@@ -51,7 +52,7 @@ struct Value : public enable_shared_from_base<Value>  {
     virtual SymbolPtr get_name() const;
     virtual ContextPtr get_context() const;
     
-    static ValuePtr EMPTY_STR, ZERO_INT, ONE_INT, ZERO_FLOAT, ONE_FLOAT, TRUE, FALSE;
+    static ValuePtr EMPTY_STR, ZERO_INT, ONE_INT, ZERO_FLOAT, ONE_FLOAT, NEGONE_INT, TRUE, FALSE;    
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Value& s) {
@@ -98,7 +99,7 @@ ValuePtr wrap_exception(ValuePtr v, ContextPtr c);
 #define CAST_BOOL(v, c) CAST_VALUE(v, c, Value::BOOL, BoolValue)
 #define CAST_INT(v, c) CAST_VALUE(v, c, Value::INT, IntValue)
 #define CAST_FLOAT(v, c) CAST_VALUE(v, c, Value::FLOAT, FloatValue)
-#define CAST_STRING(v, c) CAST_VALUE(v, c, Value::STRING, StringValue)
+#define CAST_STRING(v, c) CAST_VALUE(v, c, Value::STR, StringValue)
 #define CAST_SYMBOL(v, c) CAST_VALUE(v, c, Value::SYM, SymbolValue)
 #define CAST_CLASS(v, c) CAST_VALUE(v, c, Value::CLASS, ClassValue)
 #define CAST_OBJECT(v, c) CAST_VALUE(v, c, Value::OBJECT, ObjectValue)

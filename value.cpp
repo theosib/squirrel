@@ -8,13 +8,14 @@ namespace squirrel {
 ValuePtr Value::EMPTY_STR = StringValue::make(Symbol::empty_symbol);
 ValuePtr Value::ZERO_INT = IntValue::make(0);
 ValuePtr Value::ONE_INT = IntValue::make(1);
+ValuePtr Value::NEGONE_INT = IntValue::make(-1);
 ValuePtr Value::ZERO_FLOAT = FloatValue::make(0);
 ValuePtr Value::ONE_FLOAT = FloatValue::make(1);
 ValuePtr Value::TRUE = BoolValue::make(true);
 ValuePtr Value::FALSE = BoolValue::make(false);
 
 ValuePtr BoolValue::TRUE_STR = StringValue::make(Symbol::find("true"));
-ValuePtr BoolValue::FALSE_STR = StringValue::make(Symbol::find("true"));
+ValuePtr BoolValue::FALSE_STR = StringValue::make(Symbol::find("false"));
 
 static const char *type_names[] = {
     "NONE",
@@ -184,6 +185,16 @@ ValuePtr ExceptionValue::to_string() const {
 int Value::as_int() const {
     IntValuePtr s = std::static_pointer_cast<IntValue>(to_int());
     return s->ival;
+}
+
+float Value::as_float() const {
+    FloatValuePtr s = std::static_pointer_cast<FloatValue>(to_float());
+    return s->fval;
+}
+
+bool Value::as_bool() const {
+    BoolValuePtr s = std::static_pointer_cast<BoolValue>(to_bool());
+    return s->bval;
 }
 
 std::string Value::as_string() const {

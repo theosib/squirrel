@@ -18,7 +18,7 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
             if (name->type != Value::SYM) return v; 
             ListValuePtr args = l->sub(1);
             std::cout << "args: " << ValuePtr(args) << std::endl;
-            return CHECK_EXCEPTION_WRAP(call_function(name, args, c), c);
+            return CHECK_EXCEPTION_WRAP(call_function(CAST_SYMBOL(name, 0), args, c), c);
         }
         if (v->type == Value::SYM) {
             SymbolValuePtr s = CAST_SYMBOL(v, 0);
@@ -28,19 +28,37 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
     return v;
 }
 
-ValuePtr Interpreter::call_function(ValuePtr name, ListValuePtr args, ContextPtr caller)
+ValuePtr Interpreter::call_function(SymbolValuePtr name, ListValuePtr args, ContextPtr caller)
 {
+    ContextPtr exec_context, func_context;    
     // Look up name to get function/operator
-    ValuePtr func = CHECK_EXCEPTION(caller->get(name, caller));
+    ValuePtr func = CHECK_EXCEPTION(caller->get(name, caller, exec_context, func_context));
     if (func->type != Value::FUNC && func->type != Value::OPER) 
         return ExceptionValue::make(std::string("Not a valid function or operator: ") + func->as_string(), caller);
     
     // If the function/operator itself if not quoted, then evaluate all args
     if (!func->quote) args = evaluate_list(args, caller);
     
-    if (func->type == Value::FUNC) {
+    if (func->type == Value::CLASS) {
+        ObjectValuePtr obj = ObjectValue::make();
+        obj->parent = CAST_CLASS(func, 0);
+        ContextPtr class_context = func->get_context();
+        obj->context = class_context->make_object_context(obj->parent->name);
+        ValuePtr init = class_context->get(Symbol::make("_init"));
+        if (init->type == Value::FUNC) {
+            FunctionValuePtr init_func = CAST_FUNC(init, 0);
+            evaluate_body(init_func->body, obj->context);
+        }
+        evaluate_body(args, obj->context);
+        return obj;
+    } else if (func->type == Value::FUNC) {        
         // For function, create local variable context
-        ContextPtr c = caller->make_function_context(func->get_name());
+        ContextPtr c;
+        if (func_context->type == Symbol::class_symbol) {
+            c = exec_context->make_function_context(func->get_name());
+        } else {
+            c = caller->make_function_context(func->get_name());
+        }
         // Assign args
         FunctionValuePtr fv = CAST_FUNC(func, 0);
         ListValuePtr params = fv->params;
