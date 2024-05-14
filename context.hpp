@@ -14,7 +14,10 @@ struct Context : public std::enable_shared_from_this<Context> {
     Dictionary vars;
     SymbolPtr name;
     SymbolPtr type;
-        
+    int stack_depth = 0;
+    
+    void print(std::ostream& os) const;
+    
     ValuePtr find_ancestor_type(SymbolPtr sym);
     ValuePtr find_owner(IdentifierPtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context, bool for_writing = false);
     ValuePtr find_owner_local(IdentifierPtr s, ContextPtr caller, ContextPtr& exec_context, ContextPtr& func_context, bool for_writing = false);
@@ -58,6 +61,7 @@ struct Context : public std::enable_shared_from_this<Context> {
     
     ContextPtr make_child_context(SymbolPtr type, SymbolPtr name) {
         ContextPtr c = make(interp);
+        c->stack_depth = stack_depth+1;
         c->parent = shared_from_this();
         c->type = type;
         c->name = name;
@@ -84,7 +88,7 @@ struct Context : public std::enable_shared_from_this<Context> {
             if (ev->context == self) return e;
             
             ExceptionValuePtr new_ev = ExceptionValue::make();
-            std::cout << "Wrapping exception: " << ValuePtr(ev) << std::endl;
+            //std::cout << "Wrapping exception: " << ValuePtr(ev) << std::endl;
             new_ev->context = self;
             new_ev->parent = ev;
             return new_ev;

@@ -30,6 +30,10 @@ ValuePtr Interpreter::evaluate(ValuePtr v, ContextPtr c)
 
 ValuePtr Interpreter::call_function(SymbolValuePtr name, ListValuePtr args, ContextPtr caller)
 {
+    if (caller->stack_depth >= 1000) {
+        return ExceptionValue::make(std::string("Call stack limit exceeded: ") + name->as_string(), caller);
+    }
+    
     ContextPtr exec_context, func_context;    
     // Look up name to get function/operator
     ValuePtr func = CHECK_EXCEPTION(caller->get(name, caller, exec_context, func_context));
@@ -56,6 +60,7 @@ ValuePtr Interpreter::call_function(SymbolValuePtr name, ListValuePtr args, Cont
         ContextPtr c;
         if (func_context->type == Symbol::class_symbol) {
             c = exec_context->make_function_context(func->get_name());
+            c->stack_depth = caller->stack_depth+1;
         } else {
             c = caller->make_function_context(func->get_name());
         }

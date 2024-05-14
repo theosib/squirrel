@@ -213,6 +213,7 @@ struct ContextValue : public Value {
         return p;
     }
     virtual ContextPtr get_context() const;
+    virtual ValuePtr to_string() const;
 };
 
 struct ClassValue : public ContextValue {
@@ -224,11 +225,13 @@ struct ClassValue : public ContextValue {
         return p;
     }
     virtual SymbolPtr get_name() const;
+    virtual ValuePtr to_string() const;
 };
 
 struct ObjectValue : public ContextValue {
     ClassValuePtr parent;
     DEF_MAKE(ObjectValue, OBJECT);
+    virtual ValuePtr to_string() const;
 };
 
 struct ExceptionValue : public ContextValue {

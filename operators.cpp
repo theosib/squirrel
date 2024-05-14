@@ -39,6 +39,11 @@ static ValuePtr builtin_defun(ListValuePtr list, ContextPtr context)
     return f;
 }
 
+static ValuePtr builtin_list(ListValuePtr list, ContextPtr context)
+{
+    return list;
+}
+
 static ValuePtr builtin_set(ListValuePtr list, ContextPtr context)
 {
     if (list->size() < 2) {
@@ -49,6 +54,54 @@ static ValuePtr builtin_set(ListValuePtr list, ContextPtr context)
     
     ContextPtr exec_context, func_context;    
     CHECK_EXCEPTION(context->find_owner(name->sym, context, exec_context, func_context, true));
+    // ContextPtr owner = GET_CONTEXT(context->find_owner(name->sym, context, true), context);
+    std::cout << "Going to eval\n";
+    ValuePtr val = context->interp->evaluate(list->get(1), context);
+    CHECK_EXCEPTION(exec_context->set(name->sym->last(), val, context));
+    return val;
+}
+
+static ValuePtr builtin_set_obj(ListValuePtr list, ContextPtr context)
+{
+    if (list->size() < 2) {
+        return ExceptionValue::make(std::string("set requires name and value: ") + list->as_string(), context);
+    }
+    
+    SymbolValuePtr name = CAST_SYMBOL(list->get(0), context);
+    
+    ContextPtr exec_context, func_context;    
+    CHECK_EXCEPTION(context->find_owner(name->sym, context, exec_context, func_context, true));
+    
+    while (exec_context && exec_context->type != Symbol::object_symbol) {
+        exec_context = exec_context->parent;
+    }
+    
+    if (!exec_context) return ExceptionValue::make(std::string("No object in scope: ") + list->as_string(), context);
+    
+    // ContextPtr owner = GET_CONTEXT(context->find_owner(name->sym, context, true), context);
+    std::cout << "Going to eval\n";
+    ValuePtr val = context->interp->evaluate(list->get(1), context);
+    CHECK_EXCEPTION(exec_context->set(name->sym->last(), val, context));
+    return val;
+}
+
+static ValuePtr builtin_set_class(ListValuePtr list, ContextPtr context)
+{
+    if (list->size() < 2) {
+        return ExceptionValue::make(std::string("set requires name and value: ") + list->as_string(), context);
+    }
+    
+    SymbolValuePtr name = CAST_SYMBOL(list->get(0), context);
+    
+    ContextPtr exec_context, func_context;    
+    CHECK_EXCEPTION(context->find_owner(name->sym, context, exec_context, func_context, true));
+    
+    while (exec_context && exec_context->type != Symbol::class_symbol) {
+        exec_context = exec_context->parent;
+    }
+    
+    if (!exec_context) return ExceptionValue::make(std::string("No class in scope: ") + list->as_string(), context);
+    
     // ContextPtr owner = GET_CONTEXT(context->find_owner(name->sym, context, true), context);
     std::cout << "Going to eval\n";
     ValuePtr val = context->interp->evaluate(list->get(1), context);
@@ -595,8 +648,8 @@ void Interpreter::load_operators() {
     
     add_operator("func", builtin_defun, 0, 0, NoEval);
     add_operator("set", builtin_set, 0, 0, NoEval);
-    // add_operator("set@", builtin_set_obj, 0, 0, NoEval);
-    // add_operator("set@@", builtin_set_class, 0, 0, NoEval);
+    add_operator("set@", builtin_set_obj, 0, 0, NoEval);
+    add_operator("set@@", builtin_set_class, 0, 0, NoEval);
     add_operator("class", builtin_defclass, 0, 0, NoEval);
 
     add_operator("identity", builtin_identity, 0, OpOrder::UNARY);
@@ -606,6 +659,7 @@ void Interpreter::load_operators() {
     add_operator("ceil", builtin_ceil, 0, OpOrder::UNARY);
     add_operator("round", builtin_round, 0, OpOrder::UNARY);
     add_operator("str", builtin_str, 0, OpOrder::UNARY);
+    add_operator("list", builtin_list, 0, OpOrder::UNARY);
     
     // add_operator("copy", builtin_shallow_copy, 0, Token::UNARY);
     // list -- turn args into list

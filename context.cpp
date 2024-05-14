@@ -190,5 +190,14 @@ ValuePtr Context::find_owner(IdentifierPtr s, ContextPtr caller, ContextPtr& exe
     }
 }
 
+void Context::print(std::ostream& os) const
+{
+    if (name) os << ' ' << name;
+    if (parent) os << " parent=" << parent->name;
+    for (const auto& v : vars.entries) {
+        os << ' ' << v.second.first << '=' << v.second.second;
+    }
+}
+
 
 } // namespace squirrel

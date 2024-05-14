@@ -182,6 +182,35 @@ ValuePtr ExceptionValue::to_string() const {
     return StringValue::make(ss.str());
 }
 
+ValuePtr ClassValue::to_string() const
+{
+    std::stringstream ss;
+    ss << "{class";
+    context->print(ss);
+    ss << '}';
+    return StringValue::make(ss.str());
+}
+
+ValuePtr ObjectValue::to_string() const
+{
+    std::stringstream ss;
+    ss << "{object";
+    context->print(ss);
+    ss << '}';
+    return StringValue::make(ss.str());
+}
+
+ValuePtr ContextValue::to_string() const
+{
+    std::stringstream ss;
+    ss << "{context";
+    context->print(ss);
+    ss << '}';
+    return StringValue::make(ss.str());
+}
+
+
+
 int Value::as_int() const {
     IntValuePtr s = std::static_pointer_cast<IntValue>(to_int());
     return s->ival;
@@ -256,6 +285,7 @@ SymbolPtr ClassValue::get_name() const {
 SymbolPtr OperatorValue::get_name() const {
     return name;
 }
+
 
 
 } // namespace squirrel
